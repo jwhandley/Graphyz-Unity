@@ -157,6 +157,8 @@ MonoBehaviour:
   forces: {fileID: 7200000, guid: 08f4d817ee9464a7586e83510d2f7696, type: 3}
   nodeSize: 0.2
   linkThickness: 0.1
+  vSync: 1
+  targetFrameRate: 120
   JsonGraph: {fileID: 4900000, guid: 3cb7e7162cc104f109c4a52ddcaebe8e, type: 3}
   repulsionStrength: 0.02
   damping: 0.99
