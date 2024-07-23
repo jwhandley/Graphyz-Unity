@@ -1,0 +1,173 @@
+using UnityEngine;
+using Unity.Mathematics;
+using GraphLoader;
+using System.Runtime.InteropServices;
+using System;
+
+
+public class ParticleRenderer : MonoBehaviour
+{
+    [Header("Mesh")]
+    public Mesh mesh;
+
+    [Header("Shaders")]
+    public Shader nodeShader;
+    public Shader linkShader;
+    public ComputeShader forces;
+
+    [Header("Render parameters")]
+    [Range(0, 1)]
+    public float nodeSize = 0.1f;
+    [Range(0, 0.5f)]
+    public float linkThickness = 0.05f;
+    public bool vSync;
+    [Range(60, 144)]
+    public int targetFrameRate = 120;
+
+    [Header("Graph")]
+    public TextAsset JsonGraph;
+
+    [Header("Simulation parameters")]
+    [Range(0, 0.1f)]
+    public float repulsionStrength;
+
+    [Range(0.99f, 1)]
+    public float damping;
+
+    [Range(0, 0.1f)]
+    public float minLength;
+
+    [Range(0, 0.1f)]
+    public float minDistance;
+
+    [Range(0, 1)]
+    public float gravity;
+
+    Bounds bounds;
+    ComputeBuffer nodeBuffer;
+    ComputeBuffer inAdjacencyBuffer;
+    ComputeBuffer outAdjacencyBuffer;
+    ComputeBuffer linkBuffer;
+    Material nodeMaterial;
+    Material linkMaterial;
+    int nodeCount;
+    int linkCount;
+    int threadGroupsNodes;
+
+    int nodeForce;
+    int integration;
+
+    void Start()
+    {
+        if (vSync)
+        {
+            QualitySettings.vSyncCount = 1;
+            Application.targetFrameRate = targetFrameRate;
+        }
+
+        Graph graph = JsonUtility.FromJson<Graph>(JsonGraph.text);
+        nodeCount = graph.nodes.Length;
+        linkCount = graph.links.Length;
+
+        uint[] inAdjacency = new uint[nodeCount * nodeCount];
+        uint[] outAdjacency = new uint[nodeCount * nodeCount];
+
+        // Calculate node degrees and update adjacency matrix
+        for (int i = 0; i < linkCount; ++i)
+        {
+            Link link = graph.links[i];
+
+            outAdjacency[link.source * nodeCount + graph.nodes[link.source].outDegree] = link.target;
+            inAdjacency[link.target * nodeCount + graph.nodes[link.target].inDegree] = link.source;
+
+            graph.nodes[link.target].inDegree++;
+            graph.nodes[link.source].outDegree++;
+        }
+
+        // Initial node positions from Fibonacci spiral
+        float goldenAngle = Mathf.PI * (3 - Mathf.Sqrt(5));
+        for (int i = 0; i < nodeCount; ++i)
+        {
+            float radius = Mathf.Sqrt(i) * nodeSize;
+            float angle = i * goldenAngle;
+
+            float x = radius * Mathf.Cos(angle) + UnityEngine.Random.Range(-0.01f, 0.01f);
+            float y = radius * Mathf.Sin(angle) + UnityEngine.Random.Range(-0.01f, 0.01f);
+            // float x = UnityEngine.Random.Range(-10.0f, 10.0f);
+            // float y = UnityEngine.Random.Range(-10.0f, 10.0f);
+            float2 pos = new float2(x, y);
+            graph.nodes[i].position = pos;
+            graph.nodes[i].lastPosition = pos;
+        }
+
+        // Buffers for nodes and links
+        nodeBuffer = new ComputeBuffer(nodeCount, Marshal.SizeOf(typeof(Node)));
+        nodeBuffer.SetData(graph.nodes);
+
+        linkBuffer = new ComputeBuffer(linkCount, Marshal.SizeOf(typeof(Link)));
+        linkBuffer.SetData(graph.links);
+
+        inAdjacencyBuffer = new ComputeBuffer(nodeCount * nodeCount, Marshal.SizeOf(typeof(uint)));
+        inAdjacencyBuffer.SetData(inAdjacency);
+
+        outAdjacencyBuffer = new ComputeBuffer(nodeCount * nodeCount, Marshal.SizeOf(typeof(uint)));
+        outAdjacencyBuffer.SetData(outAdjacency);
+
+        // Material for nodes
+        nodeMaterial = new Material(nodeShader);
+        nodeMaterial.SetBuffer("Nodes", nodeBuffer);
+        nodeMaterial.SetFloat("_Radius", nodeSize);
+
+        // Material for links
+        linkMaterial = new Material(linkShader);
+        linkMaterial.SetBuffer("Nodes", nodeBuffer);
+        linkMaterial.SetBuffer("Links", linkBuffer);
+        linkMaterial.SetFloat("_Thickness", linkThickness);
+        linkMaterial.renderQueue = 2000; // Ensure links draw before nodes
+
+        bounds = new Bounds(Vector3.zero, Vector3.one * 1000);
+
+        nodeForce = forces.FindKernel("NodeForce");
+        integration = forces.FindKernel("Integration");
+
+
+        forces.SetInt("nodeCount", nodeCount);
+        uint xSizeNodes;
+        forces.GetKernelThreadGroupSizes(nodeForce, out xSizeNodes, out _, out _);
+        threadGroupsNodes = (int)Math.Ceiling(nodeCount / (float)xSizeNodes);
+
+        forces.SetBuffer(nodeForce, "Nodes", nodeBuffer);
+        forces.SetBuffer(nodeForce, "InAdjacency", inAdjacencyBuffer);
+        forces.SetBuffer(nodeForce, "OutAdjacency", outAdjacencyBuffer);
+
+        forces.SetFloat("repulsionStrength", repulsionStrength);
+        forces.SetFloat("damping", damping);
+        forces.SetFloat("minDistance", minDistance);
+        forces.SetFloat("gravity", gravity);
+        forces.SetInt("linkCount", linkCount);
+        forces.SetFloat("minLength", minLength);
+
+        forces.SetBuffer(integration, "Nodes", nodeBuffer);
+    }
+
+    void Update()
+    {
+        Graphics.DrawMeshInstancedProcedural(mesh, 0, linkMaterial, bounds, linkCount);
+        Graphics.DrawMeshInstancedProcedural(mesh, 0, nodeMaterial, bounds, nodeCount);
+    }
+
+    void FixedUpdate()
+    {
+        forces.SetFloat("deltaTime", Time.fixedDeltaTime);
+        forces.Dispatch(nodeForce, threadGroupsNodes, 1, 1);
+        forces.Dispatch(integration, threadGroupsNodes, 1, 1);
+    }
+
+    void OnDestroy()
+    {
+        nodeBuffer?.Release();
+        linkBuffer?.Release();
+        inAdjacencyBuffer?.Release();
+        outAdjacencyBuffer?.Release();
+    }
+}

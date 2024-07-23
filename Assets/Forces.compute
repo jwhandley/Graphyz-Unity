@@ -1,0 +1,122 @@
+#pragma kernel NodeForce
+#pragma kernel Integration
+
+struct Node
+{
+    uint id;
+    float2 position;
+    float2 lastPosition;
+    float2 acceleration;
+    uint inDegree;
+    uint outDegree;
+};
+
+struct Link
+{
+    uint source;
+    uint target;
+};
+
+RWStructuredBuffer<Node> Nodes;
+RWStructuredBuffer<uint> InAdjacency;
+RWStructuredBuffer<uint> OutAdjacency;
+
+uint nodeCount;
+float deltaTime;
+float minDistance;
+float gravity;
+float repulsionStrength;
+float damping;
+uint linkCount;
+float minLength;
+
+[numthreads(128,1,1)]
+void NodeForce (uint3 id : SV_DispatchThreadID)
+{
+    uint index = id.x;
+
+    if (index >= nodeCount)
+    {
+        return;
+    }
+
+    Node node = Nodes[index];
+
+    // Gravity
+    node.acceleration -= gravity * normalize(node.position) * (node.outDegree+node.inDegree+1);
+
+    // Repulsion force
+    for (uint i = 0; i < nodeCount; ++i)
+    {
+        if (i == index) continue;
+
+        Node neighbor = Nodes[i];
+        float2 disp = node.position - neighbor.position;
+        float dist = dot(disp, disp);
+
+        if (dist > minDistance)
+        {
+            float2 repulsionForce = normalize(disp) * repulsionStrength / dist * (node.outDegree+node.inDegree+1) * (neighbor.outDegree+neighbor.inDegree+1);
+            node.acceleration += repulsionForce;
+        }  
+        else
+        {
+            float2 repulsionForce = normalize(disp) * repulsionStrength / minDistance * (node.outDegree+node.inDegree+1) * (neighbor.outDegree+neighbor.inDegree+1);
+            node.acceleration += repulsionForce;
+        }  
+    }
+
+    // Attraction forces
+    for (uint j = 0; j < node.inDegree; ++j)
+    {
+        uint nbr = InAdjacency[index * nodeCount + j];
+        Node neighbor = Nodes[nbr];
+
+        float2 disp = node.position - neighbor.position;
+        float dist = length(disp);
+        
+        if (dist > minLength)
+        {
+            node.acceleration -= normalize(disp) * log(1+dist);
+        }
+    }
+
+    for (uint k = 0; k < node.outDegree; ++k)
+    {
+        uint nbr = OutAdjacency[index * nodeCount + k];
+        Node neighbor = Nodes[nbr];
+
+        float2 disp = neighbor.position - node.position;
+        float dist = length(disp);
+        
+        if (dist > minLength)
+        {
+            node.acceleration += normalize(disp) * log(1+dist);
+        }
+    }
+
+    Nodes[index] = node;
+}
+
+[numthreads(128,1,1)]
+void Integration (uint3 id : SV_DispatchThreadID)
+{
+    GroupMemoryBarrierWithGroupSync();
+
+    uint index = id.x;
+
+    if (index >= nodeCount)
+    {
+        return;
+    }
+
+    Node node = Nodes[index];
+
+    // Apply Verlet integration
+    float2 velocity = clamp(damping * (node.position - node.lastPosition),-10.0f,10.0f);
+    node.lastPosition = node.position;
+    node.position += velocity + node.acceleration * deltaTime * deltaTime;
+    node.acceleration = float2(0, 0);
+
+    Nodes[index] = node;
+}
