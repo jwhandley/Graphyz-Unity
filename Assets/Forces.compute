@@ -77,7 +77,7 @@ void NodeForce (uint3 id : SV_DispatchThreadID)
         
         if (dist > minLength)
         {
-            node.acceleration -= normalize(disp) * log(1+dist);
+            node.acceleration -= normalize(disp) * dist;
         }
     }
 
@@ -91,7 +91,7 @@ void NodeForce (uint3 id : SV_DispatchThreadID)
         
         if (dist > minLength)
         {
-            node.acceleration += normalize(disp) * log(1+dist);
+            node.acceleration += normalize(disp) * dist;
         }
     }
 
