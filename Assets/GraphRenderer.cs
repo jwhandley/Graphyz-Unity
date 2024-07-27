@@ -64,6 +64,12 @@ public class ParticleRenderer : MonoBehaviour
             QualitySettings.vSyncCount = 1;
         }
 
+        PrepareData();
+        SetData();
+    }
+
+    void PrepareData()
+    {
         Graph graph = JsonUtility.FromJson<Graph>(JsonGraph.text);
         nodeCount = graph.nodeCount();
         linkCount = graph.linkCount();
@@ -80,10 +86,9 @@ public class ParticleRenderer : MonoBehaviour
             float radius = Mathf.Sqrt(i) * nodeSize;
             float angle = i * goldenAngle;
 
-            float x = radius * Mathf.Cos(angle) + UnityEngine.Random.Range(-0.01f, 0.01f);
-            float y = radius * Mathf.Sin(angle) + UnityEngine.Random.Range(-0.01f, 0.01f);
-            // float x = UnityEngine.Random.Range(-10.0f, 10.0f);
-            // float y = UnityEngine.Random.Range(-10.0f, 10.0f);
+            float x = radius * Mathf.Cos(angle) + UnityEngine.Random.Range(-0.1f, 0.1f);
+            float y = radius * Mathf.Sin(angle) + UnityEngine.Random.Range(-0.1f, 0.1f);
+
             float2 pos = new float2(x, y);
             graph.nodes[i].position = pos;
             graph.nodes[i].lastPosition = pos;
@@ -107,7 +112,10 @@ public class ParticleRenderer : MonoBehaviour
 
         outOffsetsBuffer = new ComputeBuffer(outOffsets.GetLength(0), Marshal.SizeOf(typeof(uint)));
         outOffsetsBuffer.SetData(outOffsets);
+    }
 
+    void SetData()
+    {
         // Material for nodes
         nodeMaterial = new Material(nodeShader);
         nodeMaterial.SetBuffer("Nodes", nodeBuffer);
