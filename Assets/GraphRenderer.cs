@@ -21,8 +21,6 @@ public class ParticleRenderer : MonoBehaviour
     [Range(0, 0.5f)]
     public float linkThickness = 0.05f;
     public bool vSync;
-    [Range(60, 144)]
-    public int targetFrameRate = 120;
 
     [Header("Graph")]
     public TextAsset JsonGraph;
@@ -46,7 +44,9 @@ public class ParticleRenderer : MonoBehaviour
     Bounds bounds;
     ComputeBuffer nodeBuffer;
     ComputeBuffer inAdjacencyBuffer;
+    ComputeBuffer inOffsetsBuffer;
     ComputeBuffer outAdjacencyBuffer;
+    ComputeBuffer outOffsetsBuffer;
     ComputeBuffer linkBuffer;
     Material nodeMaterial;
     Material linkMaterial;
@@ -62,27 +62,16 @@ public class ParticleRenderer : MonoBehaviour
         if (vSync)
         {
             QualitySettings.vSyncCount = 1;
-            Application.targetFrameRate = targetFrameRate;
         }
 
         Graph graph = JsonUtility.FromJson<Graph>(JsonGraph.text);
-        nodeCount = graph.nodes.Length;
-        linkCount = graph.links.Length;
+        nodeCount = graph.nodeCount();
+        linkCount = graph.linkCount();
 
-        uint[] inAdjacency = new uint[nodeCount * nodeCount];
-        uint[] outAdjacency = new uint[nodeCount * nodeCount];
-
-        // Calculate node degrees and update adjacency matrix
-        for (int i = 0; i < linkCount; ++i)
-        {
-            Link link = graph.links[i];
-
-            outAdjacency[link.source * nodeCount + graph.nodes[link.source].outDegree] = link.target;
-            inAdjacency[link.target * nodeCount + graph.nodes[link.target].inDegree] = link.source;
-
-            graph.nodes[link.target].inDegree++;
-            graph.nodes[link.source].outDegree++;
-        }
+        uint[] inAdjacency = graph.inAdjacency();
+        uint[] outAdjacency = graph.outAdjacency();
+        uint[] inOffsets = graph.inOffsets();
+        uint[] outOffsets = graph.outOffsets();
 
         // Initial node positions from Fibonacci spiral
         float goldenAngle = Mathf.PI * (3 - Mathf.Sqrt(5));
@@ -107,11 +96,17 @@ public class ParticleRenderer : MonoBehaviour
         linkBuffer = new ComputeBuffer(linkCount, Marshal.SizeOf(typeof(Link)));
         linkBuffer.SetData(graph.links);
 
-        inAdjacencyBuffer = new ComputeBuffer(nodeCount * nodeCount, Marshal.SizeOf(typeof(uint)));
+        inAdjacencyBuffer = new ComputeBuffer(inAdjacency.GetLength(0), Marshal.SizeOf(typeof(uint)));
         inAdjacencyBuffer.SetData(inAdjacency);
 
-        outAdjacencyBuffer = new ComputeBuffer(nodeCount * nodeCount, Marshal.SizeOf(typeof(uint)));
+        inOffsetsBuffer = new ComputeBuffer(inOffsets.GetLength(0), Marshal.SizeOf(typeof(uint)));
+        inOffsetsBuffer.SetData(inOffsets);
+
+        outAdjacencyBuffer = new ComputeBuffer(outAdjacency.GetLength(0), Marshal.SizeOf(typeof(uint)));
         outAdjacencyBuffer.SetData(outAdjacency);
+
+        outOffsetsBuffer = new ComputeBuffer(outOffsets.GetLength(0), Marshal.SizeOf(typeof(uint)));
+        outOffsetsBuffer.SetData(outOffsets);
 
         // Material for nodes
         nodeMaterial = new Material(nodeShader);
@@ -138,7 +133,9 @@ public class ParticleRenderer : MonoBehaviour
 
         forces.SetBuffer(nodeForce, "Nodes", nodeBuffer);
         forces.SetBuffer(nodeForce, "InAdjacency", inAdjacencyBuffer);
+        forces.SetBuffer(nodeForce, "InOffsets", inOffsetsBuffer);
         forces.SetBuffer(nodeForce, "OutAdjacency", outAdjacencyBuffer);
+        forces.SetBuffer(nodeForce, "OutOffsets", outOffsetsBuffer);
 
         forces.SetFloat("repulsionStrength", repulsionStrength);
         forces.SetFloat("damping", damping);
@@ -169,5 +166,7 @@ public class ParticleRenderer : MonoBehaviour
         linkBuffer?.Release();
         inAdjacencyBuffer?.Release();
         outAdjacencyBuffer?.Release();
+        inOffsetsBuffer?.Release();
+        outOffsetsBuffer?.Release();
     }
 }

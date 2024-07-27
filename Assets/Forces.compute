@@ -11,15 +11,11 @@ struct Node
     uint outDegree;
 };
 
-struct Link
-{
-    uint source;
-    uint target;
-};
-
 RWStructuredBuffer<Node> Nodes;
 RWStructuredBuffer<uint> InAdjacency;
 RWStructuredBuffer<uint> OutAdjacency;
+RWStructuredBuffer<uint> InOffsets;
+RWStructuredBuffer<uint> OutOffsets;
 
 uint nodeCount;
 float deltaTime;
@@ -27,7 +23,6 @@ float minDistance;
 float gravity;
 float repulsionStrength;
 float damping;
-uint linkCount;
 float minLength;
 
 [numthreads(128,1,1)]
@@ -69,7 +64,7 @@ void NodeForce (uint3 id : SV_DispatchThreadID)
     // Attraction forces
     for (uint j = 0; j < node.inDegree; ++j)
     {
-        uint nbr = InAdjacency[index * nodeCount + j];
+        uint nbr = InAdjacency[InOffsets[index] + j];
         Node neighbor = Nodes[nbr];
 
         float2 disp = node.position - neighbor.position;
@@ -83,7 +78,7 @@ void NodeForce (uint3 id : SV_DispatchThreadID)
 
     for (uint k = 0; k < node.outDegree; ++k)
     {
-        uint nbr = OutAdjacency[index * nodeCount + k];
+        uint nbr = OutAdjacency[OutOffsets[index] + k];
         Node neighbor = Nodes[nbr];
 
         float2 disp = neighbor.position - node.position;
