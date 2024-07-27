@@ -110,7 +110,7 @@ void Integration (uint3 id : SV_DispatchThreadID)
     // Apply Verlet integration
     float2 velocity = clamp(damping * (node.position - node.lastPosition),-10.0f,10.0f);
     node.lastPosition = node.position;
-    node.position += velocity + node.acceleration * deltaTime * deltaTime;
+    node.position += velocity + node.acceleration / (node.inDegree + node.outDegree) * deltaTime * deltaTime;
     node.acceleration = float2(0, 0);
 
     Nodes[index] = node;
