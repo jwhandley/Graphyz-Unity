@@ -39,6 +39,7 @@ void NodeForce (uint3 id : SV_DispatchThreadID)
 
     // Gravity
     node.acceleration -= gravity * normalize(node.position) * (node.outDegree+node.inDegree+1);
+    GroupMemoryBarrierWithGroupSync();
 
     // Repulsion force
     for (uint i = 0; i < nodeCount; ++i)
@@ -48,18 +49,13 @@ void NodeForce (uint3 id : SV_DispatchThreadID)
         Node neighbor = Nodes[i];
         float2 disp = node.position - neighbor.position;
         float dist = dot(disp, disp);
-
-        if (dist > minDistance)
-        {
-            float2 repulsionForce = normalize(disp) * repulsionStrength / dist * (node.outDegree+node.inDegree+1) * (neighbor.outDegree+neighbor.inDegree+1);
-            node.acceleration += repulsionForce;
-        }  
-        else
-        {
-            float2 repulsionForce = normalize(disp) * repulsionStrength / minDistance * (node.outDegree+node.inDegree+1) * (neighbor.outDegree+neighbor.inDegree+1);
-            node.acceleration += repulsionForce;
-        }  
+        dist = dist < minDistance ? minDistance : dist;
+        
+        float2 repulsionForce = normalize(disp) * repulsionStrength / dist * (node.outDegree+node.inDegree+1) * (neighbor.outDegree+neighbor.inDegree+1);
+        node.acceleration += repulsionForce;
+          
     }
+    GroupMemoryBarrierWithGroupSync();
 
     // Attraction forces
     for (uint j = 0; j < node.inDegree; ++j)
@@ -68,13 +64,10 @@ void NodeForce (uint3 id : SV_DispatchThreadID)
         Node neighbor = Nodes[nbr];
 
         float2 disp = node.position - neighbor.position;
-        float dist = length(disp);
         
-        if (dist > minLength)
-        {
-            node.acceleration -= normalize(disp) * dist;
-        }
+        node.acceleration -= disp;
     }
+    GroupMemoryBarrierWithGroupSync();
 
     for (uint k = 0; k < node.outDegree; ++k)
     {
@@ -82,13 +75,10 @@ void NodeForce (uint3 id : SV_DispatchThreadID)
         Node neighbor = Nodes[nbr];
 
         float2 disp = neighbor.position - node.position;
-        float dist = length(disp);
         
-        if (dist > minLength)
-        {
-            node.acceleration += normalize(disp) * dist;
-        }
+        node.acceleration += disp;
     }
+    GroupMemoryBarrierWithGroupSync();
 
     Nodes[index] = node;
 }

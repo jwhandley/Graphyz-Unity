@@ -158,12 +158,12 @@ MonoBehaviour:
   nodeSize: 0.2
   linkThickness: 0.1
   vSync: 1
-  JsonGraph: {fileID: 4900000, guid: 62ad88cf4066b430cb5c561a637cc21c, type: 3}
-  repulsionStrength: 0.025
+  JsonGraph: {fileID: 4900000, guid: c49a00b345d10472aa0cbeffaaaf36b7, type: 3}
+  repulsionStrength: 0.02
   damping: 0.999
-  minLength: 0.01
-  minDistance: 0.01
-  gravity: 0.3
+  minLength: 0.05
+  minDistance: 0.05
+  gravity: 0.4
 --- !u!4 &487501678
 Transform:
   m_ObjectHideFlags: 0
