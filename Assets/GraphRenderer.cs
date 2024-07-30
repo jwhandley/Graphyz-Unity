@@ -157,15 +157,12 @@ public class ParticleRenderer : MonoBehaviour
 
     void Update()
     {
-        Graphics.DrawMeshInstancedProcedural(mesh, 0, linkMaterial, bounds, linkCount);
-        Graphics.DrawMeshInstancedProcedural(mesh, 0, nodeMaterial, bounds, nodeCount);
-    }
-
-    void FixedUpdate()
-    {
-        forces.SetFloat("deltaTime", Time.fixedDeltaTime);
+        forces.SetFloat("deltaTime", Time.deltaTime);
         forces.Dispatch(nodeForce, threadGroupsNodes, 1, 1);
         forces.Dispatch(integration, threadGroupsNodes, 1, 1);
+
+        Graphics.DrawMeshInstancedProcedural(mesh, 0, linkMaterial, bounds, linkCount);
+        Graphics.DrawMeshInstancedProcedural(mesh, 0, nodeMaterial, bounds, nodeCount);
     }
 
     void OnDestroy()

@@ -25,7 +25,7 @@ float repulsionStrength;
 float damping;
 float minLength;
 
-[numthreads(128,1,1)]
+[numthreads(256,1,1)]
 void NodeForce (uint3 id : SV_DispatchThreadID)
 {
     uint index = id.x;
@@ -93,7 +93,7 @@ void NodeForce (uint3 id : SV_DispatchThreadID)
     Nodes[index] = node;
 }
 
-[numthreads(128,1,1)]
+[numthreads(256,1,1)]
 void Integration (uint3 id : SV_DispatchThreadID)
 {
     uint index = id.x;
@@ -106,7 +106,7 @@ void Integration (uint3 id : SV_DispatchThreadID)
     Node node = Nodes[index];
 
     // Apply Verlet integration
-    float2 velocity = clamp(damping * (node.position - node.lastPosition),-10.0f,10.0f);
+    float2 velocity = damping * (node.position - node.lastPosition);
     node.lastPosition = node.position;
     node.position += velocity + node.acceleration / (node.inDegree + node.outDegree + 1) * deltaTime * deltaTime;
     node.acceleration = float2(0, 0);
