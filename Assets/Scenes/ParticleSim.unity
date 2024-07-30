@@ -158,7 +158,7 @@ MonoBehaviour:
   nodeSize: 0.2
   linkThickness: 0.1
   vSync: 1
-  JsonGraph: {fileID: 4900000, guid: c49a00b345d10472aa0cbeffaaaf36b7, type: 3}
+  JsonGraph: {fileID: 4900000, guid: af4ef54bcac1b44b586d41978feecd22, type: 3}
   repulsionStrength: 0.02
   damping: 0.999
   minLength: 0.05

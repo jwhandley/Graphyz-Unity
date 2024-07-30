@@ -38,7 +38,7 @@ void NodeForce (uint3 id : SV_DispatchThreadID)
     Node node = Nodes[index];
 
     // Gravity
-    node.acceleration -= gravity * normalize(node.position) * (node.outDegree+node.inDegree+1);
+    node.acceleration -= gravity * node.position / length(node.position) * (node.outDegree+node.inDegree+1);
     GroupMemoryBarrierWithGroupSync();
 
     // Repulsion force
@@ -51,7 +51,7 @@ void NodeForce (uint3 id : SV_DispatchThreadID)
         float dist = dot(disp, disp);
         dist = dist < minDistance ? minDistance : dist;
         
-        float2 repulsionForce = normalize(disp) * repulsionStrength / dist * (node.outDegree+node.inDegree+1) * (neighbor.outDegree+neighbor.inDegree+1);
+        float2 repulsionForce = disp / length(disp) * repulsionStrength / dist * (node.outDegree+node.inDegree+1) * (neighbor.outDegree+neighbor.inDegree+1);
         node.acceleration += repulsionForce;
           
     }
