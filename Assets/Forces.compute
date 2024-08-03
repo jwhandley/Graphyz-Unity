@@ -1,12 +1,10 @@
 #pragma kernel NodeForce
-#pragma kernel Integration
 
 struct Node
 {
     uint id;
     float2 position;
-    float2 lastPosition;
-    float2 acceleration;
+    float2 velocity;
     uint inDegree;
     uint outDegree;
 };
@@ -19,11 +17,10 @@ RWStructuredBuffer<uint> OutOffsets;
 
 uint nodeCount;
 float deltaTime;
-float minDistance;
 float gravity;
 float repulsionStrength;
+float attractionStrength;
 float damping;
-float minLength;
 
 [numthreads(256,1,1)]
 void NodeForce (uint3 id : SV_DispatchThreadID)
@@ -36,10 +33,9 @@ void NodeForce (uint3 id : SV_DispatchThreadID)
     }
 
     Node node = Nodes[index];
+    float2 force = float2(0,0);
 
-    // Gravity
-    node.acceleration -= gravity * node.position / length(node.position) * (node.outDegree+node.inDegree+1);
-    GroupMemoryBarrierWithGroupSync();
+    force -= gravity * normalize(node.position);
 
     // Repulsion force
     for (uint i = 0; i < nodeCount; ++i)
@@ -48,14 +44,12 @@ void NodeForce (uint3 id : SV_DispatchThreadID)
 
         Node neighbor = Nodes[i];
         float2 disp = node.position - neighbor.position;
-        float dist = dot(disp, disp);
-        dist = dist < minDistance ? minDistance : dist;
-        
-        float2 repulsionForce = disp / length(disp) * repulsionStrength / dist * (node.outDegree+node.inDegree+1) * (neighbor.outDegree+neighbor.inDegree+1);
-        node.acceleration += repulsionForce;
-          
+        float dist = length(disp) + 0.001;
+        uint massSqr = (neighbor.outDegree+neighbor.inDegree+1) * (node.outDegree + node.inDegree + 1);
+        float2 repulsionForce = disp * repulsionStrength * massSqr / pow(dist * dist, 3.0/2.0);
+        force += repulsionForce;
     }
-    GroupMemoryBarrierWithGroupSync();
+    
 
     // Attraction forces
     for (uint j = 0; j < node.inDegree; ++j)
@@ -64,42 +58,25 @@ void NodeForce (uint3 id : SV_DispatchThreadID)
         Node neighbor = Nodes[nbr];
 
         float2 disp = node.position - neighbor.position;
-        
-        node.acceleration -= disp;
+        force -= attractionStrength * disp;
     }
-    GroupMemoryBarrierWithGroupSync();
+    
 
     for (uint k = 0; k < node.outDegree; ++k)
     {
         uint nbr = OutAdjacency[OutOffsets[index] + k];
         Node neighbor = Nodes[nbr];
 
-        float2 disp = neighbor.position - node.position;
-        
-        node.acceleration += disp;
+        float2 disp = node.position - neighbor.position;
+        force -= attractionStrength * disp;
     }
+
     GroupMemoryBarrierWithGroupSync();
-
-    Nodes[index] = node;
-}
-
-[numthreads(256,1,1)]
-void Integration (uint3 id : SV_DispatchThreadID)
-{
-    uint index = id.x;
-
-    if (index >= nodeCount)
-    {
-        return;
-    }
-
-    Node node = Nodes[index];
-
-    // Apply Verlet integration
-    float2 velocity = damping * (node.position - node.lastPosition);
-    node.lastPosition = node.position;
-    node.position += velocity + node.acceleration / (node.inDegree + node.outDegree + 1) * deltaTime * deltaTime;
-    node.acceleration = float2(0, 0);
+    float2 acceleration = force / (node.inDegree + node.outDegree + 1);
+    node.velocity += acceleration * deltaTime;
+    node.velocity *= damping;
+    node.velocity = clamp(node.velocity, -20, 20);
+    node.position += node.velocity * deltaTime;
 
     Nodes[index] = node;
 }

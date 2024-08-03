@@ -30,7 +30,6 @@ Shader "Instanced/Link"
                 uint id;
                 float2 position;
                 float2 velocity;
-                float2 acceleration;
                 uint inDegree;
                 uint outDegree;
             };

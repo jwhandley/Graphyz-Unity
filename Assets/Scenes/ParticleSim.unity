@@ -158,12 +158,11 @@ MonoBehaviour:
   nodeSize: 0.2
   linkThickness: 0.1
   vSync: 1
-  JsonGraph: {fileID: 4900000, guid: af4ef54bcac1b44b586d41978feecd22, type: 3}
-  repulsionStrength: 0.02
-  damping: 0.999
-  minLength: 0.05
-  minDistance: 0.05
-  gravity: 0.4
+  JsonGraph: {fileID: 4900000, guid: 1256b1f8fa419464e85b1d015babc48c, type: 3}
+  repulsionStrength: 0.5
+  attractionStrength: 10
+  gravity: 0.1
+  damping: 0.99
 --- !u!4 &487501678
 Transform:
   m_ObjectHideFlags: 0
@@ -334,7 +333,7 @@ Camera:
   far clip plane: 1000
   field of view: 60
   orthographic: 0
-  orthographic size: 5
+  orthographic size: -30
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -359,7 +358,7 @@ Transform:
   m_GameObject: {fileID: 963194225}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -40}
+  m_LocalPosition: {x: 0, y: 0, z: -100}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

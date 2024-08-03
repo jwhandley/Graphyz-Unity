@@ -26,20 +26,15 @@ public class ParticleRenderer : MonoBehaviour
     public TextAsset JsonGraph;
 
     [Header("Simulation parameters")]
-    [Range(0, 0.1f)]
+    [Range(0, 1)]
     public float repulsionStrength;
+    [Range(1, 10)]
+    public float attractionStrength = 10;
+    [Range(0, 1)]
+    public float gravity = 0.1f;
 
     [Range(0.99f, 1)]
     public float damping;
-
-    [Range(0, 0.1f)]
-    public float minLength;
-
-    [Range(0, 0.1f)]
-    public float minDistance;
-
-    [Range(0, 1)]
-    public float gravity;
 
     Bounds bounds;
     ComputeBuffer nodeBuffer;
@@ -55,13 +50,13 @@ public class ParticleRenderer : MonoBehaviour
     int threadGroupsNodes;
 
     int nodeForce;
-    int integration;
 
     void Start()
     {
         if (vSync)
         {
             QualitySettings.vSyncCount = 1;
+            Application.targetFrameRate = (int)Screen.currentResolution.refreshRateRatio.value;
         }
 
         PrepareData();
@@ -91,7 +86,6 @@ public class ParticleRenderer : MonoBehaviour
 
             float2 pos = new float2(x, y);
             graph.nodes[i].position = pos;
-            graph.nodes[i].lastPosition = pos;
         }
 
         // Buffers for nodes and links
@@ -131,9 +125,6 @@ public class ParticleRenderer : MonoBehaviour
         bounds = new Bounds(Vector3.zero, Vector3.one * 1000);
 
         nodeForce = forces.FindKernel("NodeForce");
-        integration = forces.FindKernel("Integration");
-
-
         forces.SetInt("nodeCount", nodeCount);
         uint xSizeNodes;
         forces.GetKernelThreadGroupSizes(nodeForce, out xSizeNodes, out _, out _);
@@ -146,20 +137,17 @@ public class ParticleRenderer : MonoBehaviour
         forces.SetBuffer(nodeForce, "OutOffsets", outOffsetsBuffer);
 
         forces.SetFloat("repulsionStrength", repulsionStrength);
+        forces.SetFloat("attractionStrength", attractionStrength);
         forces.SetFloat("damping", damping);
-        forces.SetFloat("minDistance", minDistance);
         forces.SetFloat("gravity", gravity);
         forces.SetInt("linkCount", linkCount);
-        forces.SetFloat("minLength", minLength);
 
-        forces.SetBuffer(integration, "Nodes", nodeBuffer);
     }
 
     void Update()
     {
         forces.SetFloat("deltaTime", Time.deltaTime);
         forces.Dispatch(nodeForce, threadGroupsNodes, 1, 1);
-        forces.Dispatch(integration, threadGroupsNodes, 1, 1);
 
         Graphics.DrawMeshInstancedProcedural(mesh, 0, linkMaterial, bounds, linkCount);
         Graphics.DrawMeshInstancedProcedural(mesh, 0, nodeMaterial, bounds, nodeCount);

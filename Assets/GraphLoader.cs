@@ -10,8 +10,7 @@ namespace GraphLoader
     {
         public uint id;
         public float2 position;
-        public float2 lastPosition;
-        public float2 acceleration;
+        public float2 velocity;
         public uint inDegree;
         public uint outDegree;
     }
