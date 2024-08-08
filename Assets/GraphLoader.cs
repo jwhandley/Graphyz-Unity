@@ -2,11 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.Mathematics;
+using UnityEngine;
 
-namespace GraphLoader
+public class GraphLoader
 {
     [Serializable]
-    struct Node
+    public struct Node
     {
         public uint id;
         public float2 position;
@@ -16,18 +17,27 @@ namespace GraphLoader
     }
 
     [Serializable]
-    struct Link
+    public struct Link
     {
         public uint source;
         public uint target;
     }
 
     [Serializable]
-    struct Graph
+    public struct Graph
     {
         public Node[] nodes;
         public Link[] links;
 
+        public uint[] adjacency;
+        public uint[] offsets;
+
+        public Graph(TextAsset file)
+        {
+            this = JsonUtility.FromJson<Graph>(file.text);
+            getAdjacency();
+            getOffsets();
+        }
 
         public int nodeCount()
         {
@@ -39,7 +49,7 @@ namespace GraphLoader
             return links.Length;
         }
 
-        public uint[] adjacency()
+        void getAdjacency()
         {
             var adjacency = new List<List<uint>>();
             for (int i = 0; i < nodeCount(); ++i)
@@ -55,11 +65,11 @@ namespace GraphLoader
                 adjacency[(int)link.source].Add(link.target);
             }
 
-            return adjacency.SelectMany(i => i).ToArray();
+            this.adjacency = adjacency.SelectMany(i => i).ToArray();
         }
 
 
-        public uint[] offsets()
+        void getOffsets()
         {
             var offsets = new uint[nodeCount()];
 
@@ -69,7 +79,7 @@ namespace GraphLoader
                 offsets[i] = offsets[i - 1] + nodes[i - 1].degree;
             }
 
-            return offsets;
+            this.offsets = offsets;
         }
     }
 }

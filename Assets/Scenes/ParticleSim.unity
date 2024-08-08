@@ -157,12 +157,12 @@ MonoBehaviour:
   forces: {fileID: 7200000, guid: 08f4d817ee9464a7586e83510d2f7696, type: 3}
   nodeSize: 0.3
   linkThickness: 0.1
-  vSync: 0
-  JsonGraph: {fileID: 4900000, guid: c5f77e657dbc447a99bb06f0fcd9726c, type: 3}
+  vSync: 1
+  JsonGraph: {fileID: 4900000, guid: 1256b1f8fa419464e85b1d015babc48c, type: 3}
   repulsionStrength: 1
-  attractionStrength: 1
+  attractionStrength: 0.5
   gravity: 0.5
-  damping: 0.99
+  damping: 0.95
 --- !u!4 &487501678
 Transform:
   m_ObjectHideFlags: 0

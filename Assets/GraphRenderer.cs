@@ -1,8 +1,8 @@
 using UnityEngine;
 using Unity.Mathematics;
-using GraphLoader;
 using System.Runtime.InteropServices;
 using System;
+using static GraphLoader;
 
 
 public class ParticleRenderer : MonoBehaviour
@@ -26,11 +26,11 @@ public class ParticleRenderer : MonoBehaviour
     public TextAsset JsonGraph;
 
     [Header("Simulation parameters")]
-    [Range(0, 1)]
+    [Range(0, 5)]
     public float repulsionStrength;
-    [Range(0, 1)]
+    [Range(0, 5)]
     public float attractionStrength;
-    [Range(0, 1)]
+    [Range(0, 5)]
     public float gravity;
 
     [Range(0, 1)]
@@ -81,12 +81,12 @@ public class ParticleRenderer : MonoBehaviour
 
     void PrepareData()
     {
-        Graph graph = JsonUtility.FromJson<Graph>(JsonGraph.text);
+        var graph = new Graph(JsonGraph);
         nodeCount = graph.nodeCount();
         linkCount = graph.linkCount();
 
-        uint[] adjacency = graph.adjacency();
-        uint[] offsets = graph.offsets();
+        uint[] adjacency = graph.adjacency;
+        uint[] offsets = graph.offsets;
 
 
         // Initial node positions from Fibonacci spiral
