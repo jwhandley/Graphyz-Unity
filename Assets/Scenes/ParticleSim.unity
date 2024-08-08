@@ -155,13 +155,13 @@ MonoBehaviour:
   nodeShader: {fileID: 4800000, guid: 3e889c6783c274db1b439b5ae4ea48b9, type: 3}
   linkShader: {fileID: 4800000, guid: 934fe83a90ffa40239177ce63a510636, type: 3}
   forces: {fileID: 7200000, guid: 08f4d817ee9464a7586e83510d2f7696, type: 3}
-  nodeSize: 0.2
+  nodeSize: 0.3
   linkThickness: 0.1
-  vSync: 1
-  JsonGraph: {fileID: 4900000, guid: 1256b1f8fa419464e85b1d015babc48c, type: 3}
-  repulsionStrength: 0.5
-  attractionStrength: 10
-  gravity: 0.1
+  vSync: 0
+  JsonGraph: {fileID: 4900000, guid: c5f77e657dbc447a99bb06f0fcd9726c, type: 3}
+  repulsionStrength: 1
+  attractionStrength: 1
+  gravity: 0.5
   damping: 0.99
 --- !u!4 &487501678
 Transform:
@@ -283,6 +283,7 @@ GameObject:
   - component: {fileID: 963194228}
   - component: {fileID: 963194227}
   - component: {fileID: 963194226}
+  - component: {fileID: 963194229}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -364,6 +365,22 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &963194229
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 963194225}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e657bced694bc45fcbd885b203183abf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  panSpeed: 1
+  zoomSpeed: 5
+  minZoom: -10
+  maxZoom: -200
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -28,20 +28,20 @@ public class ParticleRenderer : MonoBehaviour
     [Header("Simulation parameters")]
     [Range(0, 1)]
     public float repulsionStrength;
-    [Range(1, 10)]
-    public float attractionStrength = 10;
     [Range(0, 1)]
-    public float gravity = 0.1f;
+    public float attractionStrength;
+    [Range(0, 1)]
+    public float gravity;
 
-    [Range(0.99f, 1)]
+    [Range(0, 1)]
     public float damping;
+
+    private TextAsset _JsonGraph;
 
     Bounds bounds;
     ComputeBuffer nodeBuffer;
-    ComputeBuffer inAdjacencyBuffer;
-    ComputeBuffer inOffsetsBuffer;
-    ComputeBuffer outAdjacencyBuffer;
-    ComputeBuffer outOffsetsBuffer;
+    ComputeBuffer adjacencyBuffer;
+    ComputeBuffer offsetsBuffer;
     ComputeBuffer linkBuffer;
     Material nodeMaterial;
     Material linkMaterial;
@@ -51,16 +51,32 @@ public class ParticleRenderer : MonoBehaviour
 
     int nodeForce;
 
+    bool needsUpdate;
+
     void Start()
     {
+        PrepareData();
+        SetData();
+    }
+
+    void OnValidate()
+    {
+        if (JsonGraph != _JsonGraph)
+        {
+            needsUpdate = true;
+            _JsonGraph = JsonGraph;
+        }
+
         if (vSync)
         {
             QualitySettings.vSyncCount = 1;
             Application.targetFrameRate = (int)Screen.currentResolution.refreshRateRatio.value;
         }
-
-        PrepareData();
-        SetData();
+        else
+        {
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = int.MaxValue;
+        }
     }
 
     void PrepareData()
@@ -69,10 +85,9 @@ public class ParticleRenderer : MonoBehaviour
         nodeCount = graph.nodeCount();
         linkCount = graph.linkCount();
 
-        uint[] inAdjacency = graph.inAdjacency();
-        uint[] outAdjacency = graph.outAdjacency();
-        uint[] inOffsets = graph.inOffsets();
-        uint[] outOffsets = graph.outOffsets();
+        uint[] adjacency = graph.adjacency();
+        uint[] offsets = graph.offsets();
+
 
         // Initial node positions from Fibonacci spiral
         float goldenAngle = Mathf.PI * (3 - Mathf.Sqrt(5));
@@ -95,21 +110,18 @@ public class ParticleRenderer : MonoBehaviour
         linkBuffer = new ComputeBuffer(linkCount, Marshal.SizeOf(typeof(Link)));
         linkBuffer.SetData(graph.links);
 
-        inAdjacencyBuffer = new ComputeBuffer(inAdjacency.GetLength(0), Marshal.SizeOf(typeof(uint)));
-        inAdjacencyBuffer.SetData(inAdjacency);
+        adjacencyBuffer = new ComputeBuffer(adjacency.GetLength(0), Marshal.SizeOf(typeof(uint)));
+        adjacencyBuffer.SetData(adjacency);
 
-        inOffsetsBuffer = new ComputeBuffer(inOffsets.GetLength(0), Marshal.SizeOf(typeof(uint)));
-        inOffsetsBuffer.SetData(inOffsets);
-
-        outAdjacencyBuffer = new ComputeBuffer(outAdjacency.GetLength(0), Marshal.SizeOf(typeof(uint)));
-        outAdjacencyBuffer.SetData(outAdjacency);
-
-        outOffsetsBuffer = new ComputeBuffer(outOffsets.GetLength(0), Marshal.SizeOf(typeof(uint)));
-        outOffsetsBuffer.SetData(outOffsets);
+        offsetsBuffer = new ComputeBuffer(offsets.GetLength(0), Marshal.SizeOf(typeof(uint)));
+        offsetsBuffer.SetData(offsets);
     }
 
     void SetData()
     {
+        if (nodeMaterial != null) DestroyImmediate(nodeMaterial);
+        if (linkMaterial != null) DestroyImmediate(linkMaterial);
+
         // Material for nodes
         nodeMaterial = new Material(nodeShader);
         nodeMaterial.SetBuffer("Nodes", nodeBuffer);
@@ -126,40 +138,53 @@ public class ParticleRenderer : MonoBehaviour
 
         nodeForce = forces.FindKernel("NodeForce");
         forces.SetInt("nodeCount", nodeCount);
+        forces.SetInt("linkCount", linkCount);
         uint xSizeNodes;
         forces.GetKernelThreadGroupSizes(nodeForce, out xSizeNodes, out _, out _);
         threadGroupsNodes = (int)Math.Ceiling(nodeCount / (float)xSizeNodes);
 
         forces.SetBuffer(nodeForce, "Nodes", nodeBuffer);
-        forces.SetBuffer(nodeForce, "InAdjacency", inAdjacencyBuffer);
-        forces.SetBuffer(nodeForce, "InOffsets", inOffsetsBuffer);
-        forces.SetBuffer(nodeForce, "OutAdjacency", outAdjacencyBuffer);
-        forces.SetBuffer(nodeForce, "OutOffsets", outOffsetsBuffer);
+        forces.SetBuffer(nodeForce, "Adjacency", adjacencyBuffer);
+        forces.SetBuffer(nodeForce, "Offsets", offsetsBuffer);
+    }
+
+    void Update()
+    {
+        if (needsUpdate)
+        {
+            ReleaseBuffers();
+            PrepareData();
+            SetData();
+            needsUpdate = false;
+        }
 
         forces.SetFloat("repulsionStrength", repulsionStrength);
         forces.SetFloat("attractionStrength", attractionStrength);
         forces.SetFloat("damping", damping);
         forces.SetFloat("gravity", gravity);
-        forces.SetInt("linkCount", linkCount);
-
-    }
-
-    void Update()
-    {
         forces.SetFloat("deltaTime", Time.deltaTime);
         forces.Dispatch(nodeForce, threadGroupsNodes, 1, 1);
 
+        nodeMaterial.SetFloat("_Radius", nodeSize);
         Graphics.DrawMeshInstancedProcedural(mesh, 0, linkMaterial, bounds, linkCount);
         Graphics.DrawMeshInstancedProcedural(mesh, 0, nodeMaterial, bounds, nodeCount);
     }
 
-    void OnDestroy()
+    void ReleaseBuffers()
     {
         nodeBuffer?.Release();
         linkBuffer?.Release();
-        inAdjacencyBuffer?.Release();
-        outAdjacencyBuffer?.Release();
-        inOffsetsBuffer?.Release();
-        outOffsetsBuffer?.Release();
+        adjacencyBuffer?.Release();
+        offsetsBuffer?.Release();
+
+        nodeBuffer = null;
+        linkBuffer = null;
+        adjacencyBuffer = null;
+        offsetsBuffer = null;
+    }
+
+    void OnDestroy()
+    {
+        ReleaseBuffers();
     }
 }

@@ -28,8 +28,7 @@ Shader "Instanced/Node"
                 uint id;
                 float2 position;
                 float2 velocity;
-                uint inDegree;
-                uint outDegree;
+                uint degree;
             };
 
             StructuredBuffer<Node> Nodes;
@@ -39,9 +38,9 @@ Shader "Instanced/Node"
             {
                 Node node = Nodes[instanceID];
                 float2 position = node.position;
-                uint degree = node.outDegree + node.inDegree;
+                uint degree = node.degree;
                 float3 centreWorld = float3(position, 0);
-				float3 worldVertPos = centreWorld + mul(unity_ObjectToWorld, v.vertex * _Radius * (1+sqrt(degree)));
+				float3 worldVertPos = centreWorld + mul(unity_ObjectToWorld, v.vertex * _Radius * sqrt(degree+1));
 				float3 objectVertPos = mul(unity_WorldToObject, float4(worldVertPos.xyz, 1));
 
 				v2f o;

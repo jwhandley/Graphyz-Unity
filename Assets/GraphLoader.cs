@@ -11,8 +11,8 @@ namespace GraphLoader
         public uint id;
         public float2 position;
         public float2 velocity;
-        public uint inDegree;
-        public uint outDegree;
+        public uint degree;
+
     }
 
     [Serializable]
@@ -39,64 +39,37 @@ namespace GraphLoader
             return links.Length;
         }
 
-        public uint[] inAdjacency()
+        public uint[] adjacency()
         {
-            var inAdjacency = new List<List<uint>>();
+            var adjacency = new List<List<uint>>();
             for (int i = 0; i < nodeCount(); ++i)
             {
-                inAdjacency.Add(new List<uint>());
+                adjacency.Add(new List<uint>());
             }
 
             foreach (Link link in links)
             {
-                nodes[link.target].inDegree++;
-                inAdjacency[(int)link.target].Add(link.source);
+                nodes[link.target].degree++;
+                nodes[link.source].degree++;
+                adjacency[(int)link.target].Add(link.source);
+                adjacency[(int)link.source].Add(link.target);
             }
 
-            return inAdjacency.SelectMany(i => i).ToArray();
+            return adjacency.SelectMany(i => i).ToArray();
         }
 
-        public uint[] outAdjacency()
+
+        public uint[] offsets()
         {
-            var outAdjacency = new List<List<uint>>();
-            for (int i = 0; i < nodeCount(); ++i)
-            {
-                outAdjacency.Add(new List<uint>());
-            }
+            var offsets = new uint[nodeCount()];
 
-            foreach (Link link in links)
-            {
-                nodes[link.source].outDegree++;
-                outAdjacency[(int)link.source].Add(link.target);
-            }
-
-            return outAdjacency.SelectMany(i => i).ToArray();
-        }
-
-        public uint[] inOffsets()
-        {
-            var inOffsets = new uint[nodeCount()];
-
-            inOffsets[0] = 0;
+            offsets[0] = 0;
             for (int i = 1; i < nodeCount(); ++i)
             {
-                inOffsets[i] = inOffsets[i - 1] + nodes[i - 1].inDegree;
+                offsets[i] = offsets[i - 1] + nodes[i - 1].degree;
             }
 
-            return inOffsets;
-        }
-
-        public uint[] outOffsets()
-        {
-            var outOffsets = new uint[nodeCount()];
-
-            outOffsets[0] = 0;
-            for (int i = 1; i < nodeCount(); ++i)
-            {
-                outOffsets[i] = outOffsets[i - 1] + nodes[i - 1].outDegree;
-            }
-
-            return outOffsets;
+            return offsets;
         }
     }
 }

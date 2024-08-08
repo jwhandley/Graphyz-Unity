@@ -5,15 +5,12 @@ struct Node
     uint id;
     float2 position;
     float2 velocity;
-    uint inDegree;
-    uint outDegree;
+    uint degree;
 };
 
 RWStructuredBuffer<Node> Nodes;
-RWStructuredBuffer<uint> InAdjacency;
-RWStructuredBuffer<uint> OutAdjacency;
-RWStructuredBuffer<uint> InOffsets;
-RWStructuredBuffer<uint> OutOffsets;
+RWStructuredBuffer<uint> Adjacency;
+RWStructuredBuffer<uint> Offsets;
 
 uint nodeCount;
 float deltaTime;
@@ -33,8 +30,11 @@ void NodeForce (uint3 id : SV_DispatchThreadID)
     }
 
     Node node = Nodes[index];
+
+    float mass = sqrt(node.degree + 1);
     float2 force = float2(0,0);
 
+    // Gravitational force
     force -= gravity * normalize(node.position);
 
     // Repulsion force
@@ -45,37 +45,27 @@ void NodeForce (uint3 id : SV_DispatchThreadID)
         Node neighbor = Nodes[i];
         float2 disp = node.position - neighbor.position;
         float dist = length(disp) + 0.001;
-        uint massSqr = (neighbor.outDegree+neighbor.inDegree+1) * (node.outDegree + node.inDegree + 1);
-        float2 repulsionForce = disp * repulsionStrength * massSqr / pow(dist * dist, 3.0/2.0);
+        uint massSqr = mass * sqrt(neighbor.degree+1);
+        float2 repulsionForce = normalize(disp) * repulsionStrength / (dist * dist);
         force += repulsionForce;
     }
     
 
     // Attraction forces
-    for (uint j = 0; j < node.inDegree; ++j)
+    for (uint j = 0; j < node.degree; ++j)
     {
-        uint nbr = InAdjacency[InOffsets[index] + j];
+        uint nbr = Adjacency[Offsets[index] + j];
         Node neighbor = Nodes[nbr];
 
         float2 disp = node.position - neighbor.position;
         force -= attractionStrength * disp;
     }
     
-
-    for (uint k = 0; k < node.outDegree; ++k)
-    {
-        uint nbr = OutAdjacency[OutOffsets[index] + k];
-        Node neighbor = Nodes[nbr];
-
-        float2 disp = node.position - neighbor.position;
-        force -= attractionStrength * disp;
-    }
-
     GroupMemoryBarrierWithGroupSync();
-    float2 acceleration = force / (node.inDegree + node.outDegree + 1);
-    node.velocity += acceleration * deltaTime;
+    float2 acceleration = force / sqrt(node.degree+1);
+    node.velocity += acceleration;
     node.velocity *= damping;
-    node.velocity = clamp(node.velocity, -20, 20);
+    node.velocity = clamp(node.velocity, -50, 50);
     node.position += node.velocity * deltaTime;
 
     Nodes[index] = node;

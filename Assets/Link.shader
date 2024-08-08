@@ -30,8 +30,7 @@ Shader "Instanced/Link"
                 uint id;
                 float2 position;
                 float2 velocity;
-                uint inDegree;
-                uint outDegree;
+                uint degree;
             };
 
             struct Link
